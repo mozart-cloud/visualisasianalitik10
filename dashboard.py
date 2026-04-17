@@ -97,14 +97,23 @@ df_filtered = df[
 ]
 
 # ── Header — Insight-driven Title ────────────────────────────────────
+# Hitung data untuk judul dinamis
+_total_sekolah = df["npsn"].nunique()
+_total_siswa = int(df["jumlah_siswa"].sum())
+_populasi_jkt = 10_680_000  # BPS 2024
+_pct_akses = round(_total_siswa / _populasi_jkt * 100, 2)
+
 st.markdown(
-    """
-    <h1 style='text-align:center; margin-bottom:0;'>
-        🏫 Sekolah Internasional Jakarta Timpang: Jakarta Selatan
-        Menampung 40%+ Siswa, Wilayah Lain Tertinggal
+    f"""
+    <h1 style='text-align:center; margin-bottom:0; line-height:1.3;'>
+        🏫 {_total_sekolah} Sekolah Internasional untuk Siapa? —
+        Ketika Pendidikan Premium Tumbuh Subur di Tengah Kemiskinan Jakarta
     </h1>
     <p style='text-align:center; color:gray; font-size:0.95rem; margin-top:4px;'>
-        Dashboard Geospatial — <a href="https://satudata.jakarta.go.id/open-data/detail?kategori=dataset&page_url=daftar-sekolah-internasional-dengan-jumlah-peserta-didik&data_no=1" target="_blank" style="color:gray; text-decoration:underline;">Data Sekolah Internasional DKI Jakarta 2024</a>
+        Hanya {_pct_akses}% penduduk Jakarta yang mengakses pendidikan internasional —
+        <a href="https://satudata.jakarta.go.id/open-data/detail?kategori=dataset&page_url=daftar-sekolah-internasional-dengan-jumlah-peserta-didik&data_no=1"
+        target="_blank" style="color:gray; text-decoration:underline;">
+        Sumber: Satu Data Jakarta 2024</a>
     </p>
     """,
     unsafe_allow_html=True,
@@ -435,81 +444,81 @@ st.divider()
 st.subheader("💡 Key Insight")
 
 if not df_filtered.empty:
-    # Hitung insight dari data terfilter
     siswa_per_wil = df_filtered.groupby("wilayah_clean")["jumlah_siswa"].sum()
     sekolah_per_wil = df_filtered.groupby("wilayah_clean")["npsn"].nunique()
     total_s = siswa_per_wil.sum()
+    populasi_jkt = 10_680_000
 
     wil_top = siswa_per_wil.idxmax()
-    wil_top_pct = siswa_per_wil.max() / total_s * 100 if total_s > 0 else 0
-    wil_top_sekolah = sekolah_per_wil.get(wil_top, 0)
+    wil_top_pct = round(siswa_per_wil.max() / total_s * 100) if total_s > 0 else 0
 
-    # Rasio siswa/sekolah — wilayah paling padat
-    rasio_per_wil = (siswa_per_wil / sekolah_per_wil).dropna()
-    if not rasio_per_wil.empty:
-        wil_overload = rasio_per_wil.idxmax()
-        rasio_overload = rasio_per_wil.max()
-    else:
-        wil_overload = "—"
-        rasio_overload = 0
+    wil_bottom = sekolah_per_wil.idxmin()
+    wil_bottom_n = sekolah_per_wil.min()
+    wil_bottom_pov = POVERTY_DATA.get(wil_bottom, 0)
 
-    # Konsentrasi jenjang
-    jenjang_wil = (
-        df_filtered.groupby(["jenjang", "wilayah_clean"])["npsn"]
-        .nunique()
-        .reset_index(name="n")
-    )
-    jenjang_total = jenjang_wil.groupby("jenjang")["n"].transform("sum")
-    jenjang_wil["pct"] = jenjang_wil["n"] / jenjang_total * 100
-    top_konsentrasi = jenjang_wil.loc[jenjang_wil["pct"].idxmax()]
+    rata2 = round(df_filtered["jumlah_siswa"].mean()) if not df_filtered.empty else 0
+    pct_akses = round(total_s / populasi_jkt * 100, 2)
 
-    # Poverty insight
-    pov_top_wil = max(POVERTY_DATA, key=POVERTY_DATA.get)
-    pov_top_val = POVERTY_DATA[pov_top_wil]
-    pov_top_sekolah = sekolah_per_wil.get(pov_top_wil, 0)
+    jenjang_count = df_filtered.groupby("jenjang")["npsn"].nunique()
+    jenjang_min = jenjang_count.idxmin()
+    jenjang_min_n = jenjang_count.min()
 
-    st.info(
-        f"- **Ketimpangan distribusi**: **{wil_top}** menampung "
-        f"**{wil_top_pct:.0f}%** total siswa dengan **{wil_top_sekolah} sekolah**, "
-        f"sementara rata-rata wilayah lain jauh di bawahnya\n"
-        f"- **Kapasitas terpadat**: **{wil_overload}** memiliki rasio "
-        f"**{rasio_overload:.0f} siswa/sekolah** — indikasi perlu penambahan kapasitas\n"
-        f"- **Korelasi kemiskinan**: **{pov_top_wil}** dengan kemiskinan tertinggi "
-        f"({pov_top_val}%) hanya memiliki **{pov_top_sekolah} sekolah internasional** — "
-        f"wilayah miskin cenderung minim akses pendidikan internasional\n"
-        f"- **Konsentrasi jenjang**: **{top_konsentrasi['pct']:.0f}%** "
-        f"{top_konsentrasi['jenjang']} terkonsentrasi di "
-        f"**{top_konsentrasi['wilayah_clean']}** — peluang pemerataan di wilayah lain\n"
-        f"- **Kesenjangan sosial**: **Jakarta Utara** menjadi anomali — "
-        f"kemiskinan tinggi ({POVERTY_DATA.get('Jakarta Utara', 0)}%) namun memiliki "
-        f"**{sekolah_per_wil.get('Jakarta Utara', 0)} sekolah internasional**. "
-        f"Ini mengindikasikan kesenjangan sosial yang tajam: "
-        f"sekolah internasional hadir untuk segmen masyarakat kaya, "
-        f"sementara sebagian besar penduduk tidak mampu mengaksesnya. "
-        f"Berbeda dengan **{pov_top_wil}** ({pov_top_val}% miskin, "
-        f"{pov_top_sekolah} sekolah) yang memang merata tidak terlayani"
-    )
+    with st.container(border=True):
+        st.markdown(
+            f"📍 **Eksklusivitas Terkonsentrasi** — **{wil_top}** menampung "
+            f"**{wil_top_pct}%** total siswa sekolah internasional. "
+            f"Pendidikan premium mengikuti uang, bukan kebutuhan."
+        )
+        st.markdown(
+            f"💰 **Paradoks {wil_bottom}** — Kemiskinan **{wil_bottom_pov}%** "
+            f"tapi hanya punya **{wil_bottom_n} sekolah internasional**. "
+            f"Sekolah ini bukan melayani warga sekitar, melainkan enclave "
+            f"eksklusif di tengah kemiskinan."
+        )
+        st.markdown(
+            f"📊 **Hanya {pct_akses}% Penduduk Terlayani** — Rata-rata "
+            f"**{rata2} siswa/sekolah**, total hanya **{total_s:,}** dari "
+            f"**{populasi_jkt:,}** penduduk Jakarta. Sekolah internasional "
+            f"melayani segmen sangat terbatas."
+        )
+        st.markdown(
+            f"🏫 **Jenjang Timpang** — **{jenjang_min}** hanya tersedia di "
+            f"**{jenjang_min_n} sekolah**. Bagi keluarga tidak mampu yang "
+            f"berharap trickle-down effect, jalan itu tertutup sejak awal."
+        )
 else:
     st.warning("Tidak ada data — ubah filter.")
 
 # ── Recommendation ───────────────────────────────────────────────────
 st.subheader("🎯 Recommendation")
 
-st.success(
-    "**Atasi Kesenjangan Sosial (Jakarta Utara)**\n"
-    "- Dorong program *inclusive admission* atau kuota beasiswa bagi warga kurang mampu "
-    "di sekolah internasional yang sudah beroperasi — infrastruktur sudah ada, "
-    "akses yang perlu dibuka\n"
-    "- Kolaborasi Pemda & sekolah internasional untuk program CSR pendidikan "
-    "yang menyasar komunitas miskin sekitar\n\n"
-    "**Pemerataan Akses (Wilayah Tidak Terlayani)**\n"
-    "- Prioritaskan pembangunan/perizinan sekolah internasional baru di "
-    "Kepulauan Seribu & wilayah dengan rasio sekolah rendah\n"
-    "- Pemerataan jenjang: ekspansi jenjang yang terkonsentrasi di satu wilayah "
-    "ke wilayah lain (cek chart distribusi jenjang)\n\n"
-    "**Optimalisasi Kapasitas**\n"
-    "- Evaluasi wilayah dengan rasio siswa/sekolah tertinggi — "
-    "tambah kapasitas sebelum terjadi *overcrowding*\n"
-    "- Audit sekolah dengan 0 siswa untuk verifikasi status operasional & "
-    "potensi realokasi sumber daya"
-)
+if not df_filtered.empty:
+    _sek_wil = df_filtered.groupby("wilayah_clean")["npsn"].nunique()
+    _sis_wil = df_filtered.groupby("wilayah_clean")["jumlah_siswa"].sum()
+    _wil_min = _sek_wil.idxmin()
+    _wil_min_n = _sek_wil.min()
+    _wil_min_pov = POVERTY_DATA.get(_wil_min, 0)
+    _wil_max = _sek_wil.idxmax()
+    _wil_max_n = _sek_wil.max()
+    _rasio = round((_sis_wil / _sek_wil).dropna().max()) if not _sek_wil.empty else 0
+
+    st.error(
+        f"🔴 **Prioritas Tinggi: Buka Akses di {_wil_min}**\n\n"
+        f"Wajibkan kuota beasiswa 10–15% di {_wil_min_n} sekolah internasional "
+        f"yang beroperasi di wilayah dengan kemiskinan {_wil_min_pov}%. "
+        f"Infrastruktur sudah ada — akses yang harus dibuka."
+    )
+    st.warning(
+        f"🟡 **Prioritas Sedang: Transfer Kualitas**\n\n"
+        f"Dorong program *sister-school* antara sekolah internasional "
+        f"({_wil_max}: {_wil_max_n} sekolah) dan sekolah negeri sekitar. "
+        f"Fokus pada jenjang yang timpang — transfer kualitas, "
+        f"bukan sekadar kehadiran fisik."
+    )
+    st.success(
+        f"🟢 **Jangka Panjang: Monitoring Kesenjangan**\n\n"
+        f"Integrasikan data ini dengan demografi anak usia sekolah per kelurahan. "
+        f"Saat ini rasio tertinggi mencapai **{_rasio} siswa/sekolah** — "
+        f"dashboard ini harus jadi alat ukur tahunan: "
+        f"apakah gap menyempit atau justru melebar?"
+    )
