@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:jakarta.bps.go.id)",
+      "WebSearch",
+      "WebFetch(domain:www.beritajakarta.id)",
+      "WebFetch(domain:databoks.katadata.co.id)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)"
+    ]
+  }
+}
