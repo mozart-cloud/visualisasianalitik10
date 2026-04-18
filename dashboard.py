@@ -347,8 +347,13 @@ if not df_filtered.empty:
                 "SMP": "#e67e22",
                 "SMA": "#e74c3c",
             },
+            category_orders={"jenjang": ["PAUD", "SD", "SMP", "SMA"]},
         )
-        fig1.update_layout(xaxis_tickangle=-30, margin=dict(t=10, b=40))
+        fig1.update_layout(
+            xaxis_tickangle=-30,
+            margin=dict(t=10, b=40),
+            legend=dict(traceorder="normal"),
+        )
         st.plotly_chart(fig1, use_container_width=True)
 
     # Chart 2 — Horizontal Bar: Total siswa per wilayah
